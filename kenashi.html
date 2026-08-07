@@ -128,9 +128,11 @@ async function init(){
   const terrain = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xf4f4f1, roughness: 0.98, metalness: 0 }));
   scene.add(terrain);
 
-  // spawn at the pass
+  // spawn at the pass, facing east into the Gunma-side valley
   const sx = (PASS_U-0.5)*WORLD, sz = (PASS_V-0.5)*WORLD;
   player.position.set(sx, groundAt(sx, sz), sz);
+  yaw = -Math.PI/2;
+  player.rotation.y = yaw;
 
   clock = new THREE.Clock();
   setupDesktopControls();
@@ -231,6 +233,7 @@ function tick(){
   }
   renderer.render(scene, camera);
 }
+
 </script>
 </body>
 </html>
