@@ -21,7 +21,7 @@ html,body{margin:0;padding:0;overflow:hidden;background:#e7edf5;font-family:syst
 <div id="loading">毛無峠の地形を読み込み中…(標高データ: 国土地理院)</div>
 <div id="hud">
   <div class="title">毛無峠 — 国土の白模型 (標高1,823m)
-    <small>標高データ: 国土地理院 標高タイル(DEM10B) をリアルタイム取得 / このページはデータを保持しません</small>
+    <small>標高・道路データ: 国土地理院(標高タイル DEM10B / 道路中心線) をリアルタイム取得 / このページはデータを保持しません</small>
   </div>
   <button id="vrbtn">VRで入る</button>
 </div>
@@ -82,14 +82,81 @@ async function loadDEM(){
   WORLD = 2*Math.PI*6378137*Math.cos(lat*Math.PI/180)/Math.pow(2,Z) * 2; // 2 tiles wide
 }
 
+let HM = null; // render-mesh height grid (MESH_N²) — roads & walking conform to the visible surface
 function groundAt(x, z){
-  // world (x east, z south) → grid bilinear sample
   const u = x/WORLD + 0.5, v = z/WORLD + 0.5;
-  const gx = Math.min(Math.max(u*(N-1), 0), N-1.001);
-  const gy = Math.min(Math.max(v*(N-1), 0), N-1.001);
+  const gx = Math.min(Math.max(u*(MESH_N-1), 0), MESH_N-1.001);
+  const gy = Math.min(Math.max(v*(MESH_N-1), 0), MESH_N-1.001);
   const x0 = Math.floor(gx), y0 = Math.floor(gy), fx = gx-x0, fy = gy-y0;
-  const h00=H[y0*N+x0], h10=H[y0*N+x0+1], h01=H[(y0+1)*N+x0], h11=H[(y0+1)*N+x0+1];
-  return (h00*(1-fx)+h10*fx)*(1-fy) + (h01*(1-fx)+h11*fx)*fy - hMin;
+  const h00=HM[y0*MESH_N+x0], h10=HM[y0*MESH_N+x0+1], h01=HM[(y0+1)*MESH_N+x0], h11=HM[(y0+1)*MESH_N+x0+1];
+  return (h00*(1-fx)+h10*fx)*(1-fy) + (h01*(1-fx)+h11*fx)*fy;
+}
+
+// ---- roads: GSI road centerline GeoJSON tiles (z16), draped on terrain ----
+function lonLatToWorld(lon, lat){
+  const xt = (lon+180)/360*16384;                       // z14 tile coords
+  const rad = lat*Math.PI/180;
+  const yt = (1 - Math.log(Math.tan(rad)+1/Math.cos(rad))/Math.PI)/2*16384;
+  return [ ((xt-XT[0])/2 - 0.5)*WORLD, ((yt-YT[0])/2 - 0.5)*WORLD ];
+}
+
+async function loadRoads(){
+  if (location.search.includes('test=1')){
+    // synthetic winding road for headless testing
+    const pts = [];
+    for (let i=0;i<=120;i++){ const t=i/120; pts.push([(t-0.5)*WORLD, Math.sin(t*9)*WORLD*0.12]); }
+    addRibbons([{pts, w: 5}], 0x8e959f);
+    return;
+  }
+  const jobs = [];
+  for (let x=57968; x<=57975; x++) for (let y=25592; y<=25599; y++)
+    jobs.push(fetch(`https://cyberjapandata.gsi.go.jp/xyz/experimental_rdcl/16/${x}/${y}.geojson`)
+      .then(r => r.ok ? r.json() : null).catch(() => null));
+  const tiles = (await Promise.all(jobs)).filter(Boolean);
+  const roads = [], trails = [];
+  for (const t of tiles) for (const f of t.features){
+    if (!f.geometry || f.geometry.type !== 'LineString') continue;
+    const p = f.properties || {};
+    const pts = f.geometry.coordinates.map(c => lonLatToWorld(c[0], c[1]));
+    if (p.type === '徒歩道') trails.push({pts, w: 1.6});
+    else if (p.rdCtg === '都道府県道' || p.rdCtg === '国道') roads.push({pts, w: 5});
+    else roads.push({pts, w: 3.2});
+  }
+  addRibbons(roads, 0x8e959f);        // asphalt gray
+  addRibbons(trails, 0xb9b1a3);       // pale trail
+}
+
+function addRibbons(lines, color){
+  const pos = [];
+  const lim = WORLD/2 - 2;
+  for (const {pts, w} of lines){
+    // densify to ≤12 m steps, clamp to world
+    const dense = [];
+    for (let i=0;i<pts.length;i++){
+      const a = pts[i];
+      if (dense.length === 0){ dense.push(a); continue; }
+      const b = dense[dense.length-1];
+      const d = Math.hypot(a[0]-b[0], a[1]-b[1]);
+      const n = Math.max(1, Math.ceil(d/12));
+      for (let k=1;k<=n;k++) dense.push([b[0]+(a[0]-b[0])*k/n, b[1]+(a[1]-b[1])*k/n]);
+    }
+    const inb = p => Math.abs(p[0])<lim && Math.abs(p[1])<lim;
+    for (let i=0;i<dense.length-1;i++){
+      const a = dense[i], b = dense[i+1];
+      if (!inb(a) || !inb(b)) continue;
+      const dx=b[0]-a[0], dz=b[1]-a[1], L=Math.hypot(dx,dz)||1;
+      const nx=-dz/L*w/2, nz=dx/L*w/2;
+      const ya=groundAt(a[0],a[1])+0.35, yb=groundAt(b[0],b[1])+0.35;
+      const l0=[a[0]-nx,ya,a[1]-nz], r0=[a[0]+nx,ya,a[1]+nz];
+      const l1=[b[0]-nx,yb,b[1]-nz], r1=[b[0]+nx,yb,b[1]+nz];
+      pos.push(...l0,...r0,...r1, ...l0,...r1,...l1);
+    }
+  }
+  if (!pos.length) return;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+  g.computeVertexNormals();
+  scene.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({color, roughness: 1, metalness: 0})));
 }
 
 async function init(){
@@ -120,9 +187,12 @@ async function init(){
   geo.rotateX(-Math.PI/2); // y-up, spans x/z
   const pos = geo.attributes.position;
   const step = (N-1)/(MESH_N-1);
+  HM = new Float32Array(MESH_N*MESH_N);
   for (let i=0; i<pos.count; i++){
     const r = Math.floor(i/MESH_N), c = i%MESH_N;
-    pos.setY(i, H[Math.round(r*step)*N + Math.round(c*step)] - hMin);
+    const h = H[Math.round(r*step)*N + Math.round(c*step)] - hMin;
+    pos.setY(i, h);
+    HM[r*MESH_N + c] = h;
   }
   geo.computeVertexNormals();
   const terrain = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xf4f4f1, roughness: 0.98, metalness: 0 }));
@@ -145,6 +215,7 @@ async function init(){
   document.getElementById('loading').style.display = 'none';
   renderer.setAnimationLoop(tick);
   window.SCENE_READY = true;
+  loadRoads();   // async, roads appear when fetched (道路中心線: 国土地理院)
 }
 
 function setupVRButton(){
