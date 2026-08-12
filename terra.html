@@ -421,6 +421,12 @@ function setupDesktopControls(){
     if (e.code === 'KeyT'){ cycleMode(); return; }
     if (e.code === 'Space'){ pitch = 0; camera.rotation.x = 0; e.preventDefault(); return; }  // 水平に戻す
     if (e.code.startsWith('Arrow') || e.code === 'PageUp' || e.code === 'PageDown') e.preventDefault();
+    if (!e.repeat){   // 単押しでも確実に動くよう、押した瞬間に一段ぶん振る(長押しは下の連続回転)
+      if (e.code === 'ArrowLeft')  { yaw += 0.07; player.rotation.y = yaw; }
+      if (e.code === 'ArrowRight') { yaw -= 0.07; player.rotation.y = yaw; }
+      if (e.code === 'ArrowUp')    { pitch = Math.min( PITCH_LIMIT, pitch + 0.06); camera.rotation.x = pitch; }
+      if (e.code === 'ArrowDown')  { pitch = Math.max(-PITCH_LIMIT, pitch - 0.06); camera.rotation.x = pitch; }
+    }
     keys[e.code]=true;
   });
   document.addEventListener('keyup', e => keys[e.code]=false);
