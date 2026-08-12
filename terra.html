@@ -32,7 +32,7 @@ html,body{margin:0;padding:0;overflow:hidden;background:#e7edf5;font-family:syst
     <button id="vrbtn">VRで入る</button>
   </div>
 </div>
-<div id="help">VR: 左スティック=移動 / 右スティック左右=向き / 右スティック上下=上昇下降(0で地面歩行) / トリガー=加速 / B・Yボタン=表示切替 ｜ PC: WASDまたは矢印キー=移動, マウス(クリック後)=視点, R/F=上昇下降, Shift=加速, T=白模型⇄空中写真</div>
+<div id="help">PC: <b>WASD=移動</b> / <b>矢印キー=視点</b>(←→首振り, ↑↓見上げ見下ろし) / Space=水平に戻す / R・F=上昇下降 / Shift=加速 / T=白模型⇄空中写真 ｜ マウス(画面クリックでロック)でも視点操作可 ｜ VR: 左スティック=移動, 右スティック左右=向き・上下=上昇下降, トリガー=加速, B・Yボタン=表示切替</div>
 <script>
 console.warn('Scripts "build/three.js" and "build/three.min.js" are deprecated with r150+, and will be removed with r160. Please use ES Modules or alternatives: https://threejs.org/docs/index.html#manual/en/introduction/Installation'),
 /**
@@ -419,23 +419,32 @@ function setupDesktopControls(){
   });
   document.addEventListener('keydown', e => {
     if (e.code === 'KeyT'){ cycleMode(); return; }
+    if (e.code === 'Space'){ pitch = 0; camera.rotation.x = 0; e.preventDefault(); return; }  // 水平に戻す
+    if (e.code.startsWith('Arrow') || e.code === 'PageUp' || e.code === 'PageDown') e.preventDefault();
     keys[e.code]=true;
   });
   document.addEventListener('keyup', e => keys[e.code]=false);
 }
 
+const LOOK_YAW = 1.6, LOOK_PITCH = 1.15, PITCH_LIMIT = 1.45;
 function pollDesktopInput(dt){
   if (renderer.xr.isPresenting) return;
   const sprint = keys['ShiftLeft']||keys['ShiftRight'];
   const speed = sprint ? 60 : 8;
   const f = new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw));
   const r = new THREE.Vector3(-f.z,0,f.x);
-  if (keys['KeyW']||keys['ArrowUp']) player.position.addScaledVector(f, speed*dt);
-  if (keys['KeyS']||keys['ArrowDown']) player.position.addScaledVector(f, -speed*dt);
+  // 移動: WASD
+  if (keys['KeyW']) player.position.addScaledVector(f, speed*dt);
+  if (keys['KeyS']) player.position.addScaledVector(f, -speed*dt);
   if (keys['KeyA']) player.position.addScaledVector(r, -speed*dt);
   if (keys['KeyD']) player.position.addScaledVector(r, speed*dt);
-  if (keys['ArrowLeft']){ yaw += 1.6*dt; player.rotation.y = yaw; }
-  if (keys['ArrowRight']){ yaw -= 1.6*dt; player.rotation.y = yaw; }
+  // 視点: 矢印キー(左右=首振り / 上下=見上げ見下ろし)。マウス不要で一周見渡せる
+  const look = sprint ? 2.0 : 1.0;
+  if (keys['ArrowLeft'])  { yaw += LOOK_YAW*look*dt; player.rotation.y = yaw; }
+  if (keys['ArrowRight']) { yaw -= LOOK_YAW*look*dt; player.rotation.y = yaw; }
+  if (keys['ArrowUp'])    { pitch = Math.min( PITCH_LIMIT, pitch + LOOK_PITCH*look*dt); camera.rotation.x = pitch; }
+  if (keys['ArrowDown'])  { pitch = Math.max(-PITCH_LIMIT, pitch - LOOK_PITCH*look*dt); camera.rotation.x = pitch; }
+  // 高度: R/F または PageUp/PageDown
   if (keys['KeyR']||keys['PageUp']) flyOff = Math.min(2500, flyOff + speed*dt);
   if (keys['KeyF']||keys['PageDown']) flyOff = Math.max(0, flyOff - speed*dt);
 }
