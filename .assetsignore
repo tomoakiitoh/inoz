@@ -1,0 +1,4 @@
+# Cloudflare Workers の静的アセットから除外する(.gitignore と同じ書式)。
+# assets.directory がリポジトリのルート(".")なので、指定しないと
+# ワークフローファイルまで配信されてしまう(実際に /.github/workflows/static.yml が 200 で出ていた)。
+.github

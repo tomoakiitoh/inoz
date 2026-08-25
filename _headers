@@ -1,11 +1,13 @@
-# Cloudflare Pages 用のレスポンスヘッダ。GitHub Pages では無視される。
+# Cloudflare のレスポンスヘッダ設定。GitHub Pages では無視される。
+# このファイル自体は配信されない(fetch すると 404)。設定として読まれるだけ。
 
-# 公開判断が済むまで検索避け。玄関を持つと決めたら robots.txt と meta ごと外す。
+# 公開判断が済むまで検索避け。玄関を持つと決めたら
+# robots.txt の Disallow と、各HTMLの <meta name="robots"> ごと外す。
 /*
   X-Robots-Tag: noindex
 
-# 単一HTMLなので、本体は短めに。データは実行時に国のサーバから直接取る。
-/index.html
-  Cache-Control: public, max-age=300, must-revalidate
-/terra.html
-  Cache-Control: public, max-age=300, must-revalidate
+# ※Cache-Control はここに書いても効かない(2026-08-25 実測)。
+#   Cloudflare の静的アセットが "public, max-age=0, must-revalidate" を返し、
+#   エッジ側でキャッシュ(cf-cache-status: HIT)、ブラウザは毎回 304 で確認する形になる。
+#   単一HTMLを頻繁に差し替える今の運用ではこの既定で困らないので、そのままにする。
+#   変えたくなったら _headers ではなく Cloudflare の Cache Rules で行うこと。
