@@ -1,0 +1,6 @@
+# 公開判断が済むまでの一時設定。
+# 玄関を持つと決めたら、下の2行と _headers の X-Robots-Tag、
+# および各HTMLの <meta name="robots"> をまとめて外すこと。
+
+User-agent: *
+Disallow: /

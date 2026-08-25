@@ -1,0 +1,11 @@
+# Cloudflare Pages 用のレスポンスヘッダ。GitHub Pages では無視される。
+
+# 公開判断が済むまで検索避け。玄関を持つと決めたら robots.txt と meta ごと外す。
+/*
+  X-Robots-Tag: noindex
+
+# 単一HTMLなので、本体は短めに。データは実行時に国のサーバから直接取る。
+/index.html
+  Cache-Control: public, max-age=300, must-revalidate
+/terra.html
+  Cache-Control: public, max-age=300, must-revalidate
