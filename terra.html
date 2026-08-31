@@ -15,6 +15,10 @@ html,body{margin:0;padding:0;overflow:hidden;background:#e7edf5;font-family:syst
 #left{min-width:0;flex:1}
 #hud .title{color:#39414d;font-size:15px;font-weight:600;text-shadow:0 1px 3px rgba(255,255,255,.7)}
 #hud .title small{display:block;font-weight:400;font-size:11px;color:#6a7482;margin-top:3px}
+/* #hud は pointer-events:none なので、リンクだけ明示的に拾えるようにする
+   (以前 #databox で踏んだのと同じ落とし穴) */
+#hud .title small a{pointer-events:auto;color:#4a6076;text-decoration:underline}
+#hud .title small a:hover{color:#2b3646}
 #hud .status{display:block;font-weight:400;font-size:11px;color:#3d6b8f;margin-top:2px}
 #hud .warn{display:none;font-weight:400;font-size:11px;color:#a05a2c;margin-top:2px}
 
@@ -168,7 +172,7 @@ body.gated #hud,body.gated #help,body.gated #touch{visibility:hidden}
 <div id="hud">
   <div id="left">
     <div class="title"><span class="place">国土の白模型</span>
-      <small>標高・道路・空中写真: 国土地理院 ｜ 地名検索: 国土地理院 / OpenStreetMap contributors(リアルタイム取得・このページはデータを保持しません)</small>
+      <small>標高・道路・空中写真: 国土地理院 ｜ 地名検索: 国土地理院 / OpenStreetMap contributors(リアルタイム取得・このページはデータを保持しません) ｜ <a href="/license.html" target="_blank" rel="noopener">出典とライセンス</a></small>
       <span class="status"></span>
       <span class="warn"></span>
     </div>
@@ -246,7 +250,7 @@ body.gated #hud,body.gated #help,body.gated #touch{visibility:hidden}
     <div id="gfoot">
       標高・空中写真・道路・地名検索: 国土地理院 ｜ 3D都市モデル: Project PLATEAU(国土交通省) ｜ 地名検索の一部: OpenStreetMap contributors<br>
       データは開くたびに国の配信元から直接受け取ります。<b>このページはデータを保持しません。</b><br>
-      仕様: <a href="/llms.txt">llms.txt</a> ｜ 背景は毛無峠(長野・群馬県境)です。
+      仕様: <a href="/llms.txt">llms.txt</a> ｜ <a href="/license.html">出典とライセンス</a> ｜ 背景は毛無峠(長野・群馬県境)です。
       <br><span id="gskip">説明はいいので、そのまま見る</span>
     </div>
   </div>
