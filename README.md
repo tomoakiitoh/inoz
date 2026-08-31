@@ -86,6 +86,19 @@ inoz を複製・改変して動かす場合、取得先のデータには**そ�
 
 ライセンスは検討中です。決まり次第、このリポジトリに `LICENSE` を置きます。
 
+### 同梱しているオープンソースソフトウェア
+
+これは inoz 自身のライセンスとは別の話で、**こちらが守る側**です。
+
+| | ライセンス | |
+|---|---|---|
+| [three.js](https://threejs.org/) r160 | MIT | 描画 |
+| [Draco](https://google.github.io/draco/) (glTFデコーダ) | Apache-2.0 | PLATEAU の 3D Tiles の展開。wasm を base64 で埋め込み。改変なし |
+
+著作権表示と許諾条件の全文は **[THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt)** に置いてあり、
+配布物である `index.html` の冒頭にも同じものを埋め込んでいます（単一HTMLで配る以上、
+ファイルが一枚で完結している必要があるため）。
+
 ## 構成
 
 | | |
@@ -95,6 +108,7 @@ inoz を複製・改変して動かす場合、取得先のデータには**そ�
 | `llms.txt` | データ形式の仕様 |
 | `inou_baseline.json` | データの実例(伊能忠敬が最初に測った基線) |
 | `akiba.html` `kenashi.html` | 初期の実験(秋葉原・毛無峠) |
+| `THIRD-PARTY-NOTICES.txt` | 同梱しているOSSの著作権表示と許諾条件(全文) |
 | `_headers` `robots.txt` `.assetsignore` | 配信の設定 |
 
 ビルド前のソースはこのリポジトリには含めていません。
@@ -114,5 +128,7 @@ It has no server. A single HTML file assembles the terrain in your browser, fetc
 The whole view is expressible as a URL. Query parameters (`?`) carry what can be reproduced from public data; the fragment (`#`) carries data you bring yourself — and browsers never send fragments to servers, so pasted data stays on your machine by specification rather than by promise.
 
 **No licence has been chosen yet, so all rights are reserved.** You are welcome to read the source; copying, modification, redistribution and commercial use are not granted at this time. Data fetched at runtime remains subject to the terms of each provider.
+
+Bundled open-source software — three.js (MIT) and the Draco decoder (Apache-2.0) — is covered by [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt); the same notices are embedded at the top of the distributed `index.html`.
 
 The name comes from *Inō-zu* — the maps of Inō Tadataka, who retired at fifty, took up astronomy and surveying, and spent seventeen years walking Japan to measure it.
