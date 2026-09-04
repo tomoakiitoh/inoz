@@ -59,13 +59,14 @@ inoz は、国が公開しているデータだけで日本のどこにでも立
 <p>すべて公開データで、商用利用も認められています。出典の表示が条件です。</p>
 
 <table>
-<tr><th>標高・空中写真<br>道路中心線・地名検索</th>
+<tr><th>標高・空中写真<br>道路中心線・地名検索<br>指定緊急避難場所</th>
     <td><b>国土地理院</b><br>
     <small><a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル一覧</a> ／
     <a href="https://www.gsi.go.jp/kikakuchousei/kikakuchousei40182.html" target="_blank" rel="noopener">国土地理院コンテンツ利用規約</a></small></td></tr>
-<tr><th>3D都市モデル</th>
+<tr><th>3D都市モデル<br>津波浸水想定区域モデル</th>
     <td><b>Project PLATEAU（国土交通省）</b><br>
-    <small>CC BY 4.0 等のオープンライセンス。著作権は各地方公共団体に帰属します。<br>
+    <small>CC BY 4.0 等のオープンライセンス。著作権は各地方公共団体に帰属します。
+    津波浸水想定の元は都道府県などが公表した想定で、inoz はその区域と浸水深の階級をそのまま地形に置いています。<br>
     <a href="https://www.mlit.go.jp/plateau/site-policy/" target="_blank" rel="noopener">PLATEAU サイトポリシー</a></small></td></tr>
 <tr><th>地名検索の一部</th>
     <td><b>OpenStreetMap contributors</b><br>
@@ -90,6 +91,8 @@ inoz は、国が公開しているデータだけで日本のどこにでも立
 <tr><td class="no">ここは安全 / ここは危険</td><td>（判断を書かない）</td></tr>
 <tr><td class="no">ルート案内 / 最短経路</td><td>見るための道すじ</td></tr>
 <tr><td class="no">測量結果 / 正確な標高</td><td>国土地理院の標高データに基づく表示</td></tr>
+<tr><td class="no">この避難場所は安全 / 水位◯mまで持つ</td><td>市町村が指定した避難場所の名称・所在地と、その点の地面の標高</td></tr>
+<tr><td class="no">この建物に逃げれば助かる</td><td>建物の地面と屋上の標高、公表された想定浸水深の階級、その引き算</td></tr>
 </table>
 
 <div class="box warn">
@@ -98,7 +101,10 @@ inoz は、国が公開しているデータだけで日本のどこにでも立
 時間とともにどう動くか、排水がどう効くかを一切考えていません。川とつながっていない窪地も塗られます。
 堤防は標高データに含まれていません。<br>
 <b>低い土地が塗られていないことは、そこが安全であることを意味しません。</b><br><br>
-<b>避難の判断は、お住まいの自治体のハザードマップをご覧ください。</b>
+<b>避難の判断は、お住まいの自治体のハザードマップをご覧ください。</b><br><br>
+津波浸水想定の面は、都道府県などが公表した想定区域を階級の色で地形に置いたものです。inoz は計算していません。
+指定緊急避難場所の点は市町村の指定で、inoz が足しているのはその点の地面の標高だけです（建物や階の高さではありません）。
+建物を指したときの「想定浸水深との差」は、建物の屋上の標高と、公表された階級の上端との引き算で、それ以上の意味は持ちません。
 </small>
 </div>
 
