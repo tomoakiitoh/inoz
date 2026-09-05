@@ -12,7 +12,9 @@ html,body{margin:0;padding:0;overflow:hidden;background:#e7edf5;font-family:syst
 #app canvas{touch-action:none;display:block}
 #hud{position:fixed;top:0;left:0;right:0;padding:12px 16px;padding-top:max(12px,env(safe-area-inset-top));
   pointer-events:none;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
-#left{min-width:0;flex:1}
+/* 004: #btns が flex-shrink:0 で 10個分(1,176px)を確保していたため、1280px の窓では
+   #left が 62px に潰れていた。#left に床(340px)を作り、#btns は残りの幅で折り返させる */
+#left{flex:1 1 340px;min-width:340px}
 #hud .title{color:#39414d;font-size:15px;font-weight:600;text-shadow:0 1px 3px rgba(255,255,255,.7)}
 #hud .title small{display:block;font-weight:400;font-size:11px;color:#6a7482;margin-top:3px}
 /* #hud は pointer-events:none なので、リンクだけ明示的に拾えるようにする
@@ -150,7 +152,7 @@ html,body{margin:0;padding:0;overflow:hidden;background:#e7edf5;font-family:syst
 #toast{display:none;position:fixed;left:50%;bottom:64px;transform:translateX(-50%);z-index:20;
   background:rgba(43,54,70,.92);color:#fff;font-size:13px;padding:10px 18px;border-radius:20px;
   pointer-events:none;box-shadow:0 3px 14px rgba(43,54,70,.3)}
-#btns{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+#btns{display:flex;gap:8px;flex:0 1 auto;min-width:0;flex-wrap:wrap;justify-content:flex-end}
 #vrbtn,#modebtn,#bldgbtn,#waterbtn,#sharebtn,#qrbtn,#databtn,#farbtn,#tnmbtn,#hinanbtn{pointer-events:auto;background:#2b3646;color:#fff;border:none;border-radius:10px;padding:11px 16px;font-size:14px;cursor:pointer;white-space:nowrap}
 #modebtn{background:#4a6076}
 #bldgbtn{background:#6b7f93}
@@ -228,6 +230,9 @@ body.gated #hud,body.gated #help,body.gated #touch{visibility:hidden}
         全部持って行き、#left が 0px に潰れて左の列が一文字ずつ縦に流れていた */
   #hud{flex-direction:column;align-items:stretch;gap:8px;padding:8px 10px;
     padding-top:max(8px,env(safe-area-inset-top))}
+  /* 004 が PC 側で入れた #left の床(flex-basis 340px / min-width 340px)を、ここで外す。
+     縦積みでは flex-basis が「高さ」になり、min-width は 320px の端末で横にはみ出す */
+  #left{flex:1 1 auto;min-width:0}
   #hud .title,#hud .status{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #searchwrap{max-width:none}
 
@@ -295,8 +300,11 @@ body.gated #hud,body.gated #help,body.gated #touch{visibility:hidden}
 /* 6) 横持ち: 右下に寄せて、左のスティックを空ける */
 @media (max-width:768px) and (orientation:landscape),
        (max-height:500px) and (pointer:coarse) and (orientation:landscape){
-  #panels{max-height:70vh;left:auto;width:min(420px,60vw);border-radius:14px 0 0 0}
-  body.sheet #toast{bottom:64px}
+  /* 003-a: 右寄せだと ▲▼≫(右端 20px)を覆う。スティック(左 22+124px)と ▲▼≫ の間は
+     812px の横持ちで約 588px 空いているので、中央 440px なら両方に触れる */
+  #panels{left:50%;right:auto;transform:translateX(-50%);width:min(440px,70vw);
+    max-height:60vh;border-radius:14px 14px 0 0}
+  body.sheet #toast{bottom:calc(60vh + 12px)}
 }
 </style>
 </head>
