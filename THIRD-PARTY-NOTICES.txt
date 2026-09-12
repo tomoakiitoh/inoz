@@ -1,6 +1,9 @@
 inoz — https://inoz.jp/
-Copyright (c) 2026 Tomoaki Itoh. All rights reserved.
-（inoz 自体のライセンスは未定です。決まり次第 LICENSE を置きます）
+Copyright (c) 2026 Tomoaki Itoh
+Licensed under the PolyForm Noncommercial License 1.0.0
+<https://polyformproject.org/licenses/noncommercial/1.0.0>
+Required Notice: Copyright (c) 2026 Tomoaki Itoh (https://inoz.jp)
+（非商用は自由。商用利用は別途許諾。全文は https://github.com/tomoakiitoh/inoz/blob/main/LICENSE ）
 
 このファイルには、以下のオープンソースソフトウェアが同梱されています。
 それぞれの著作権表示と許諾条件は下記のとおりです。
