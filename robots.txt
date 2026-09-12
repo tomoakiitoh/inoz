@@ -1,6 +1,8 @@
-# 公開判断が済むまでの一時設定。
-# 玄関を持つと決めたら、下の2行と _headers の X-Robots-Tag、
-# および各HTMLの <meta name="robots"> をまとめて外すこと。
+# 2026-09 限定公開。検索は許可する。
+# 検索避けは robots.txt / _headers の X-Robots-Tag / 各HTMLの <meta name="robots"> の三重だった。
+# 三つとも外した(片方だけ残すと効き続ける)。
 
 User-agent: *
-Disallow: /
+Allow: /
+
+Sitemap: https://inoz.jp/sitemap.txt

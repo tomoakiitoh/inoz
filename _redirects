@@ -1,0 +1,2 @@
+# www → apex。Cloudflare の DNS に www の CNAME(→ inoz.jp、Proxied)を足したときに効く
+https://www.inoz.jp/* https://inoz.jp/:splat 301

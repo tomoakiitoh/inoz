@@ -1,13 +1,13 @@
-# Cloudflare のレスポンスヘッダ設定。GitHub Pages では無視される。
-# このファイル自体は配信されない(fetch すると 404)。設定として読まれるだけ。
+# Cloudflare(Workers 静的アセット)のレスポンスヘッダ設定。このファイル自体は配信されない。
+# 2026-09 限定公開: X-Robots-Tag: noindex を外した(robots.txt と各HTMLの meta も同時に外している)。
 
-# 公開判断が済むまで検索避け。玄関を持つと決めたら
-# robots.txt の Disallow と、各HTMLの <meta name="robots"> ごと外す。
 /*
-  X-Robots-Tag: noindex
+  # 地理院・PLATEAU・OSM へ飛ぶリクエストに付く Referer を「https://inoz.jp/」だけにする。
+  # 利用者が立っている座標(? 以降)は外に出ない。いままではブラウザの既定に助けられていただけだったのを、
+  # 設定として明示した。「約束ではなく構造」
+  Referrer-Policy: strict-origin-when-cross-origin
+  # 他サイトからの iframe 埋め込みを許す(無指定でも許可だが、方針として明示)。将来 vr_embed で使う
+  Content-Security-Policy: frame-ancestors *
+  X-Content-Type-Options: nosniff
 
-# ※Cache-Control はここに書いても効かない(2026-08-25 実測)。
-#   Cloudflare の静的アセットが "public, max-age=0, must-revalidate" を返し、
-#   エッジ側でキャッシュ(cf-cache-status: HIT)、ブラウザは毎回 304 で確認する形になる。
-#   単一HTMLを頻繁に差し替える今の運用ではこの既定で困らないので、そのままにする。
-#   変えたくなったら _headers ではなく Cloudflare の Cache Rules で行うこと。
+# ※Cache-Control はここに書いても効かない(2026-08-25 実測)。変えるなら Cloudflare の Cache Rules
