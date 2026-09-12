@@ -114,6 +114,7 @@ inoz(このリポジトリのコードと、ビルド済みの `index.html`)は
 |---|---|---|
 | [three.js](https://threejs.org/) r160 | MIT | 描画 |
 | [Draco](https://google.github.io/draco/) (glTFデコーダ) | Apache-2.0 | PLATEAU の 3D Tiles の展開。wasm を base64 で埋め込み。改変なし |
+| [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) 2.0.4 | MIT | 共有 URL の QR コード生成 |
 
 著作権表示と許諾条件の全文は **[THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt)** に置いてあり、
 配布物である `index.html` の冒頭にも同じものを埋め込んでいます（単一HTMLで配る以上、
@@ -147,8 +148,8 @@ It has no server. A single HTML file assembles the terrain in your browser, fetc
 
 The whole view is expressible as a URL. Query parameters (`?`) carry what can be reproduced from public data; the fragment (`#`) carries data you bring yourself — and browsers never send fragments to servers, so pasted data stays on your machine by specification rather than by promise.
 
-**No licence has been chosen yet, so all rights are reserved.** You are welcome to read the source; copying, modification, redistribution and commercial use are not granted at this time. Data fetched at runtime remains subject to the terms of each provider.
+**inoz is released under the [PolyForm Noncommercial License 1.0.0](LICENSE)**: free for any noncommercial purpose, including use by government bodies, schools, research and public-safety organisations. Commercial use requires a separate agreement — please open a GitHub issue. Data fetched at runtime remains subject to the terms of each provider.
 
-Bundled open-source software — three.js (MIT) and the Draco decoder (Apache-2.0) — is covered by [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt); the same notices are embedded at the top of the distributed `index.html`.
+Bundled open-source software — three.js (MIT), the Draco decoder (Apache-2.0) and qrcode-generator (MIT) — is covered by [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt); the same notices are embedded at the top of the distributed `index.html`.
 
 The name comes from *Inō-zu* — the maps of Inō Tadataka, who retired at fifty, took up astronomy and surveying, and spent seventeen years walking Japan to measure it.
