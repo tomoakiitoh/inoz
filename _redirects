@@ -1,2 +1,4 @@
-# www → apex。Cloudflare の DNS に www の CNAME(→ inoz.jp、Proxied)を足したときに効く
-https://www.inoz.jp/* https://inoz.jp/:splat 301
+# (2026-09-12) www → apex のリダイレクトはここには書かない。
+# 絶対URL形式の行が Workers Builds を落とした疑いがあるため外した。
+# www を活かすときは Cloudflare の DNS に www の CNAME(→ inoz.jp, Proxied)を足し、
+# Rules → Redirect Rules で www.inoz.jp/* → https://inoz.jp/$1 (301) を作る。
