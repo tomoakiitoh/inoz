@@ -70,10 +70,17 @@ inoz は、国が公開しているデータだけで日本のどこにでも立
     建物は建築物モデル、鉄道の高架・道路橋・首都高は橋梁モデルという別の地物で、両方を同じ高さの基準で置いています。
     津波浸水想定の元は都道府県などが公表した想定で、inoz はその区域と浸水深の階級をそのまま地形に置いています。<br>
     <a href="https://www.mlit.go.jp/plateau/site-policy/" target="_blank" rel="noopener">PLATEAU サイトポリシー</a></small></td></tr>
+<tr><th>県の津波浸水想定<br>（10m 格子・浸水深 cm）</th>
+    <td><b>徳島県オープンデータポータルサイト「津波浸水想定（津波浸水深）（SHP）」（徳島県）を加工して作成</b><br>
+    <small>2025年9月公表の県独自の想定（南海トラフ巨大地震・最大クラス）。10m 格子の点データを、inoz が緯度経度の格子（0.0001度）に
+    並べ替えて置いています（値は変えていません。最寄りの点を取るだけで補間もしていません）。<code>?tnm=1&amp;tnmsrc=pref</code> または津波想定の枠の「切り替え」で表示。
+    変換の手順は inoz のソース（tools/make_pref_tnm.py）に残しています。<br>
+    <a href="https://opendata.pref.tokushima.lg.jp/dataset/5110.html" target="_blank" rel="noopener">データセットのページ</a> ／
+    <a href="https://opendata.pref.tokushima.lg.jp/kiyaku.html" target="_blank" rel="noopener">徳島県オープンデータポータルサイト利用規約</a></small></td></tr>
 <tr><th>市区町村の一覧<br>（VRメニューの行き先）</th>
     <td><b>国土数値情報「市町村役場等及び公的集会施設データ」（国土交通省）</b><br>
     <small>P34-14。市役所・区役所・町村役場の位置だけを取り出して、VR のメニューの行き先一覧にしています。
-    これは inoz が<b>唯一リポジトリに置いているデータ</b>です（実行時に取れる形で配信されていないため）。<br>
+    これは inoz がリポジトリに置いているデータの一つです（実行時に取れる形で配信されていないため。もう一つは上の県の津波浸水想定）。<br>
     <a href="https://nlftp.mlit.go.jp/ksj/" target="_blank" rel="noopener">国土数値情報ダウンロードサイト</a> ／
     <a href="https://nlftp.mlit.go.jp/ksj/other/agreement.html" target="_blank" rel="noopener">国土数値情報 利用約款</a></small></td></tr>
 <tr><th>地名検索の一部</th>
