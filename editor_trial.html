@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>inoz Editor 試用(一時)</title>
+<style>
+  :root{--bg:#f4f5f7;--fg:#1d2430;--mut:#6b7280;--line:#d9dde3;--acc:#1f5fbf;--warn:#b45309}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font:14px/1.5 system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;color:var(--fg);background:var(--bg)}
+  #wrap{display:grid;grid-template-columns:1fr 340px;height:100%}
+  #view{position:relative;background:#000}
+  #view iframe{border:0;width:100%;height:100%;display:block}
+  #panel{overflow:auto;padding:12px 14px;border-left:1px solid var(--line);background:#fff}
+  h1{font-size:15px;margin:0 0 4px}
+  .sub{color:var(--mut);font-size:12px;margin:0 0 10px}
+  section{border-top:1px solid var(--line);padding:10px 0}
+  h2{font-size:13px;margin:0 0 6px;display:flex;justify-content:space-between;align-items:center}
+  h2 .st{font-weight:400;color:var(--mut);font-size:12px}
+  label{display:block;font-size:12px;color:var(--mut);margin-top:6px}
+  input[type=text],input[type=number],select{width:100%;padding:5px 7px;border:1px solid var(--line);border-radius:6px;font:inherit}
+  .row{display:flex;gap:6px}.row>*{flex:1}
+  button{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:pointer}
+  button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+  button:disabled{opacity:.5;cursor:default}
+  ul{list-style:none;padding:0;margin:6px 0 0}
+  li{display:flex;justify-content:space-between;gap:6px;align-items:center;padding:4px 0;border-bottom:1px dashed var(--line);font-size:12px}
+  li code{font-size:11px;color:var(--mut);word-break:break-all}
+  #log{font-size:11px;color:var(--mut);white-space:pre-wrap;max-height:120px;overflow:auto;background:var(--bg);padding:6px;border-radius:6px}
+  .pick{background:#fff7e6;border:1px solid #f3d9a4;border-radius:6px;padding:6px;font-size:12px;margin-top:6px}
+  .mode{color:var(--warn);font-weight:600}
+  @media (max-width:800px){#wrap{grid-template-columns:1fr}#panel{border-left:0;border-top:1px solid var(--line);max-height:50vh}}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="view"><iframe id="f" allow="xr-spatial-tracking; fullscreen" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+  <div id="panel">
+    <h1>inoz Editor 試用</h1>
+    <p class="sub">一時的な試用ページ(サーバなし・保存はこのブラウザだけ)。inoz.jp を埋め込み、postMessage(仕様016)で動かします。</p>
+
+    <section>
+      <h2>範囲 <span class="st" id="st-range">—</span></h2>
+      <div class="row">
+        <div><label>中心 緯度</label><input type="number" id="lat" step="0.00001" value="35.70040"></div>
+        <div><label>中心 経度</label><input type="number" id="lon" step="0.00001" value="139.77230"></div>
+      </div>
+      <div class="row">
+        <div><label>一辺 (m)</label><input type="number" id="side" value="700" step="50"></div>
+        <div><label>出力 一辺 (mm)</label><input type="number" id="width" value="200" step="10"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="b-open">この場所を開く</button>
+        <button id="b-range" class="pri">枠を描く</button>
+        <button id="b-center">今の位置を中心に</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>消す <span class="st" id="st-hide">0 棟</span></h2>
+      <p class="sub" style="margin:0">画面の建物をクリックすると下に出ます。</p>
+      <div id="picked" class="pick" hidden></div>
+      <ul id="hide-list"></ul>
+    </section>
+
+    <section>
+      <h2>置く <span class="st" id="st-models">0 件</span></h2>
+      <label>OBJ の URL(https)</label>
+      <input type="text" id="objurl" value="https://inoz.jp/cube_30m_mm.obj" placeholder="https://…/model.obj">
+      <div class="row">
+        <div><label>単位</label><select id="unit"><option value="mm">mm</option><option value="m">m</option></select></div>
+        <div><label>上方向</label><select id="up"><option value="z">Z-up(CAD)</option><option value="y">Y-up(SketchUp)</option></select></div>
+        <div><label>原点</label><select id="origin"><option value="min">最低点を地面に</option><option value="zero">Z=0 を地面に</option></select></div>
+      </div>
+      <div class="row">
+        <div><label>向き (北=0°)</label><input type="number" id="heading" value="0" step="1"></div>
+        <div><label>倍率</label><input type="number" id="scale" value="1" step="0.1"></div>
+        <div><label>上下補正 (m)</label><input type="number" id="dz" value="0" step="0.5"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="b-place" class="pri">次の地面クリックで置く</button>
+      </div>
+      <p class="sub" id="place-hint" style="margin:6px 0 0"></p>
+      <ul id="model-list"></ul>
+    </section>
+
+    <section>
+      <h2>出す</h2>
+      <div class="row">
+        <button id="b-stl">STL</button>
+        <button id="b-svg">型紙 SVG</button>
+        <button id="b-dxf">型紙 DXF</button>
+      </div>
+      <div class="row">
+        <div><label>等高線の間隔 (m)</label><input type="number" id="cont" value="2" step="0.5"></div>
+        <div><label>高さの誇張</label><input type="number" id="stlz" value="1" step="0.1"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>見せる</h2>
+      <div class="row">
+        <button id="b-share" class="pri">共有 URL をコピー</button>
+        <button id="b-reset">全部消す</button>
+      </div>
+      <p class="sub" style="margin:6px 0 0">共有 URL は inoz.jp の `#` に状態を畳みます(サーバに残りません)。OBJ は URL 先に置いたままです。</p>
+    </section>
+
+    <section>
+      <h2>記録</h2>
+      <div id="log"></div>
+    </section>
+  </div>
+</div>
+<script>
+(() => {
+  const INOZ = 'https://inoz.jp';
+  const $ = id => document.getElementById(id);
+  const f = $('f');
+  const KEY = 'inoz.editor.trial';
+  let st = { hide: [], models: [], range: null, view: null };
+  try { const j = JSON.parse(localStorage.getItem(KEY) || 'null'); if (j) st = Object.assign(st, j); } catch(_){}
+  let ready = false, placing = false, lastPick = null;
+  const log = (s) => { const el = $('log'); el.textContent = (new Date().toLocaleTimeString() + ' ' + s + '\n' + el.textContent).slice(0, 4000); };
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch(_){} };
+  const send = (o) => { if (f.contentWindow) f.contentWindow.postMessage(Object.assign({ inoz: 1 }, o), INOZ); };
+
+  function doc(){
+    const d = { title: 'Editor 試用', source: '設計データ: 利用者 / 地形: 国土地理院 / 建物: PLATEAU' };
+    if (st.hide.length) d.hide = st.hide.map(h => ({ gml: h.gml }));
+    if (st.models.length) d.models = st.models.map(m => ({ url: m.url, unit: m.unit, up: m.up, origin: m.origin, lat: m.lat, lon: m.lon, heading: m.heading, scale: m.scale, dz: m.dz }));
+    return d;
+  }
+  function push(){ send({ type: 'setData', data: doc() }); render(); save(); }
+  function render(){
+    $('st-hide').textContent = st.hide.length + ' 棟';
+    $('hide-list').innerHTML = st.hide.map((h, i) => `<li><span>${h.label || ''}<br><code>${h.gml}</code></span><button data-unhide="${i}">戻す</button></li>`).join('');
+    $('st-models').textContent = st.models.length + ' 件';
+    $('model-list').innerHTML = st.models.map((m, i) => `<li><span>${m.url.split('/').pop()} @ ${m.lat.toFixed(5)}, ${m.lon.toFixed(5)} / ${m.heading}°</span><button data-unplace="${i}">外す</button></li>`).join('');
+    $('st-range').textContent = st.range ? `${st.range.side_m} m → ${st.range.width_mm} mm (1:${Math.round(st.range.side_m * 1000 / st.range.width_mm)})` : '—';
+  }
+
+  function openView(){
+    const lat = +$('lat').value, lon = +$('lon').value;
+    const q = new URLSearchParams({ lat: lat.toFixed(5), lon: lon.toFixed(5), bldg: '1', eye: '150', tilt: '-35', far: '1', minimap: '1' });
+    ready = false;
+    f.src = `${INOZ}/?${q}`;
+    log('開く ' + f.src);
+  }
+
+  window.addEventListener('message', e => {
+    if (e.origin !== INOZ || !e.data || e.data.inoz !== 1) return;
+    const m = e.data;
+    if (m.type === 'ready'){
+      ready = true; log('ready');
+      if (st.hide.length || st.models.length) push();
+      if (st.range) send({ type: 'setRange', lat: st.range.lat, lon: st.range.lon, side_m: st.range.side_m });
+      return;
+    }
+    if (m.type === 'picked'){
+      if (m.kind === 'ground'){
+        if (placing){
+          placing = false; $('b-place').textContent = '次の地面クリックで置く'; $('place-hint').textContent = '';
+          st.models.push({ url: $('objurl').value.trim(), unit: $('unit').value, up: $('up').value, origin: $('origin').value,
+            lat: m.lat, lon: m.lon, heading: +$('heading').value || 0, scale: +$('scale').value || 1, dz: +$('dz').value || 0 });
+          log(`置く ${m.lat.toFixed(5)}, ${m.lon.toFixed(5)} 標高 ${m.elev_abs.toFixed(1)} m`);
+          push();
+        }
+        return;
+      }
+      if (m.kind === 'bldg'){
+        lastPick = m;
+        const el = $('picked'); el.hidden = false;
+        el.innerHTML = `建物 高さ ${m.height_m.toFixed(1)} m / 屋上 ${m.top_abs.toFixed(1)} m<br><code>${m.gml || '(id なし)'}</code><br><button id="b-hide" class="pri" ${m.gml ? '' : 'disabled'}>この建物を消す</button>`;
+        $('b-hide').onclick = () => {
+          if (!st.hide.some(h => h.gml === m.gml)) st.hide.push({ gml: m.gml, label: `高さ ${m.height_m.toFixed(1)} m` });
+          el.hidden = true; log('消す ' + m.gml); push();
+        };
+      }
+      return;
+    }
+    if (m.type === 'rangeChanged'){ log('枠 ' + JSON.stringify({ side_m: m.side_m, box_ok: m.box_ok, off: m.off })); if (m.box_ok === false) log('※ 範囲が歩ける箱(約4km)に収まっていません'); return; }
+    if (m.type === 'exported'){
+      const a = document.createElement('a'); a.href = URL.createObjectURL(m.blob); a.download = m.name; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+      const meta = m.meta || {};
+      log(`出力 ${m.name} (${(m.blob.size/1048576).toFixed(2)} MB` + (meta.triangles ? `, ${meta.triangles} 面` : '') + (meta.layers ? `, ${meta.layers} 層` : '') + (meta.hidden ? `, 消した ${meta.hidden}` : '') + ')');
+      return;
+    }
+    if (m.type === 'viewChanged'){ st.view = { lat: m.lat, lon: m.lon, dir: m.dir, tilt: m.tilt, eye: m.eye }; return; }
+    if (m.type === 'error'){ log('エラー ' + m.where + ': ' + m.message); return; }
+  });
+  f.addEventListener('load', () => { setTimeout(() => send({ type: 'hello' }), 500); });
+
+  $('b-open').onclick = openView;
+  $('b-center').onclick = () => { send({ type: 'getView' }); setTimeout(() => { if (st.view){ $('lat').value = st.view.lat.toFixed(5); $('lon').value = st.view.lon.toFixed(5); log('中心を今の位置に'); } }, 400); };
+  $('b-range').onclick = () => {
+    st.range = { lat: +$('lat').value, lon: +$('lon').value, side_m: +$('side').value, width_mm: +$('width').value };
+    send({ type: 'setRange', lat: st.range.lat, lon: st.range.lon, side_m: st.range.side_m }); render(); save();
+  };
+  $('b-place').onclick = () => {
+    const u = $('objurl').value.trim();
+    if (!/^https:\/\//.test(u)){ log('OBJ の URL は https で始めてください'); return; }
+    placing = !placing; $('b-place').textContent = placing ? '地面をクリックしてください(もう一度押すと中止)' : '次の地面クリックで置く';
+    $('place-hint').textContent = placing ? '建物や避難場所の上ではなく、地面を短くクリック' : '';
+  };
+  const exportAs = (kind, extra) => {
+    if (!st.range){ log('先に範囲を決めて「枠を描く」を押してください'); return; }
+    const o = Object.assign({ type: 'export', kind }, extra);
+    log('出力を依頼 ' + kind + ' …(数十秒かかることがあります)');
+    send(o);
+  };
+  $('b-stl').onclick = () => exportAs('stl', { stl: st.range && st.range.side_m, stlw: st.range && st.range.width_mm, stlz: +$('stlz').value || 1, stlmode: 'city' });
+  $('b-svg').onclick = () => exportAs('plan.svg', { plan: st.range && st.range.side_m, planw: st.range && st.range.width_mm, plancont: +$('cont').value || 2 });
+  $('b-dxf').onclick = () => exportAs('plan.dxf', { plan: st.range && st.range.side_m, planw: st.range && st.range.width_mm, plancont: +$('cont').value || 2 });
+  $('b-share').onclick = async () => {
+    send({ type: 'getView' });
+    await new Promise(r => setTimeout(r, 400));
+    const v = st.view || { lat: +$('lat').value, lon: +$('lon').value };
+    const q = new URLSearchParams({ lat: v.lat.toFixed(5), lon: v.lon.toFixed(5), bldg: '1' });
+    if (v.dir != null) q.set('dir', (+v.dir).toFixed(1)); if (v.tilt) q.set('tilt', (+v.tilt).toFixed(1)); if (v.eye) q.set('eye', (+v.eye).toFixed(1));
+    const s = JSON.stringify(doc());
+    let hash;
+    try {
+      const cs = new CompressionStream('gzip');
+      const buf = await new Response(new Blob([s]).stream().pipeThrough(cs)).arrayBuffer();
+      let bin = ''; for (const b of new Uint8Array(buf)) bin += String.fromCharCode(b);
+      hash = '#z=' + btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    } catch(_){ hash = '#d=' + encodeURIComponent(s); }
+    const url = `${INOZ}/?${q}${hash}`;
+    try { await navigator.clipboard.writeText(url); log('共有 URL をコピーしました (' + url.length + ' 文字)'); }
+    catch(_){ prompt('共有 URL', url); }
+  };
+  $('b-reset').onclick = () => { if (!confirm('消した建物・置いたモデル・枠を全部消しますか?')) return; st = { hide: [], models: [], range: null, view: st.view }; send({ type: 'setRange', off: true }); push(); };
+  $('panel').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.unhide != null){ st.hide.splice(+b.dataset.unhide, 1); push(); }
+    if (b.dataset.unplace != null){ st.models.splice(+b.dataset.unplace, 1); push(); }
+  });
+
+  render();
+  if (st.range){ $('lat').value = st.range.lat; $('lon').value = st.range.lon; $('side').value = st.range.side_m; $('width').value = st.range.width_mm; }
+  openView();
+})();
+</script>
+</body>
+</html>
