@@ -30,6 +30,13 @@
   #log{font-size:11px;color:var(--mut);white-space:pre-wrap;max-height:120px;overflow:auto;background:var(--bg);padding:6px;border-radius:6px}
   .pick{background:#fff7e6;border:1px solid #f3d9a4;border-radius:6px;padding:6px;font-size:12px;margin-top:6px}
   .mode{color:var(--warn);font-weight:600}
+  .intro{background:#eef4ff;border:1px solid #c9d8f5;border-radius:8px;padding:8px 10px;font-size:12px;margin:0 0 10px}
+  .intro ol{margin:4px 0 6px;padding-left:18px}
+  .intro ul.note{list-style:disc;margin:0;padding-left:18px}
+  .intro ul.note li{display:list-item;border:0;padding:1px 0}
+  #drop{border:1.5px dashed var(--line);border-radius:8px;padding:10px;text-align:center;font-size:12px;color:var(--mut);margin-top:6px;cursor:pointer}
+  #drop.on,body.dragging #drop{border-color:var(--acc);background:#eef4ff;color:var(--acc)}
+  #file-st{font-size:12px;margin-top:4px}
   @media (max-width:800px){#wrap{grid-template-columns:1fr}#panel{border-left:0;border-top:1px solid var(--line);max-height:50vh}}
 </style>
 </head>
@@ -38,7 +45,21 @@
   <div id="view"><iframe id="f" allow="xr-spatial-tracking; fullscreen" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
   <div id="panel">
     <h1>inoz Editor 試用</h1>
-    <p class="sub">一時的な試用ページ(サーバなし・保存はこのブラウザだけ)。inoz.jp を埋め込み、postMessage(仕様016)で動かします。</p>
+    <p class="sub">一時的な試用ページです。</p>
+    <div class="intro">
+      <b>使い方(この順で)</b>
+      <ol>
+        <li>「この場所を開く」→ 範囲を決めて「枠を描く」</li>
+        <li>消したい建物をクリック →「この建物を消す」</li>
+        <li>OBJ を選ぶかドロップ →「次の地面クリックで置く」→ 地面をクリック</li>
+        <li>STL・型紙 SVG/DXF を書き出す</li>
+      </ol>
+      <ul class="note">
+        <li><b>保存はこのブラウザの中だけ</b>です。別の端末・別のブラウザには引き継がれません。</li>
+        <li><b>持ち込んだ OBJ や作業内容は、どこのサーバにも送りません。</b>読み込みも書き出しも、すべてこのブラウザの中で行います。</li>
+        <li>感想・不具合は <b>Facebook で伊藤へ</b>(メッセージかベータ募集の投稿へのコメント)。</li>
+      </ul>
+    </div>
 
     <section>
       <h2>範囲 <span class="st" id="st-range">—</span></h2>
@@ -66,8 +87,12 @@
 
     <section>
       <h2>置く <span class="st" id="st-models">0 件</span></h2>
-      <label>OBJ の URL(https)</label>
-      <input type="text" id="objurl" value="https://inoz.jp/cube_30m_mm.obj" placeholder="https://…/model.obj">
+      <div id="drop" tabindex="0">OBJ ファイルを選ぶ / ここ(画面のどこでも)にドロップ<input type="file" id="objfile" accept=".obj,text/plain" hidden></div>
+      <div id="file-st"></div>
+      <details style="margin-top:6px"><summary style="font-size:12px;color:var(--mut);cursor:pointer">URL から読む(https)</summary>
+        <input type="text" id="objurl" value="" placeholder="https://…/model.obj(試しに: https://inoz.jp/cube_30m_mm.obj)" style="margin-top:4px">
+      </details>
+      <p class="sub" style="margin:4px 0 0">推奨: 単位 mm・Z-up・原点は底面中心・三角形化済み・MTL 不要・数 MB まで(上限 50MB)。</p>
       <div class="row">
         <div><label>単位</label><select id="unit"><option value="mm">mm</option><option value="m">m</option></select></div>
         <div><label>上方向</label><select id="up"><option value="z">Z-up(CAD)</option><option value="y">Y-up(SketchUp)</option></select></div>
@@ -104,7 +129,7 @@
         <button id="b-share" class="pri">共有 URL をコピー</button>
         <button id="b-reset">全部消す</button>
       </div>
-      <p class="sub" style="margin:6px 0 0">共有 URL は inoz.jp の `#` に状態を畳みます(サーバに残りません)。OBJ は URL 先に置いたままです。</p>
+      <p class="sub" style="margin:6px 0 0">共有 URL は inoz.jp の `#` に状態を畳みます(サーバに残りません)。<b>ファイルから読んだ OBJ は共有 URL に載りません</b>(相手の画面には出ません。消した建物と URL 指定の OBJ は載ります)。</p>
     </section>
 
     <section>
@@ -122,14 +147,63 @@
   let st = { hide: [], models: [], range: null, view: null };
   try { const j = JSON.parse(localStorage.getItem(KEY) || 'null'); if (j) st = Object.assign(st, j); } catch(_){}
   let ready = false, placing = false, lastPick = null;
+  // ファイルから読んだ OBJ は IndexedDB に置く(localStorage は 5MB で溢れるため)。st.models には local:<id> だけ書く
+  const files = new Map();     // id -> { name, dataURL, size }
+  let cur = null;              // 次に置くファイル { id } または null(URL を使う)
+  const MAX = 50 * 1024 * 1024;
+  const idb = (() => { let p; return () => p || (p = new Promise((res, rej) => { const r = indexedDB.open('inoz.editor.trial', 1); r.onupgradeneeded = () => r.result.createObjectStore('files'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); })); })();
+  async function idbDo(mode, fn){ const db = await idb(); return new Promise((res, rej) => { const tx = db.transaction('files', mode); const out = fn(tx.objectStore('files')); tx.oncomplete = () => res(out && out.result); tx.onerror = () => rej(tx.error); }); }
+  async function idbLoad(){
+    try {
+      const db = await idb();
+      await new Promise((res, rej) => { const tx = db.transaction('files', 'readonly'); const c = tx.objectStore('files').openCursor();
+        c.onsuccess = () => { const k = c.result; if (k){ files.set(k.key, k.value); k.continue(); } }; tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+    } catch(e){ log('ブラウザ保存(IndexedDB)が使えません: ' + e); }
+  }
+  const isLocal = u => typeof u === 'string' && u.startsWith('local:');
+  const nameOf = m => isLocal(m.url) ? ((files.get(m.url.slice(6)) || {}).name || '(読めないファイル)') : m.url.split('/').pop();
+  async function gcFiles(){
+    const used = new Set(st.models.filter(m => isLocal(m.url)).map(m => m.url.slice(6)));
+    if (cur) used.add(cur.id);
+    for (const id of [...files.keys()]) if (!used.has(id)){ files.delete(id); try { await idbDo('readwrite', s => s.delete(id)); } catch(_){} }
+  }
+  function fileSt(){
+    const el = $('file-st');
+    if (cur && files.has(cur.id)){ const f = files.get(cur.id); el.innerHTML = `次に置く: <b>${f.name}</b> (${(f.size/1048576).toFixed(2)} MB) <button id="b-unfile" style="padding:1px 6px">やめる</button>`; $('b-unfile').onclick = () => { cur = null; fileSt(); gcFiles(); }; }
+    else el.textContent = '';
+  }
+  async function takeFile(file){
+    if (!file) return;
+    if (!/\.obj$/i.test(file.name)){ log('OBJ ファイル(.obj)だけ読めます: ' + file.name); return; }
+    if (file.size > MAX){ log('50MB を超えるので読みません: ' + file.name); return; }
+    const head = await file.slice(0, 200000).text();
+    if (!/^\s*v\s+[-\d.eE+]+\s+[-\d.eE+]+\s+[-\d.eE+]+/m.test(head)){ log('頂点(v 行)が見つかりません。OBJ ではないかもしれません: ' + file.name); return; }
+    const dataURL = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(file); });
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    const rec = { name: file.name, dataURL, size: file.size };
+    files.set(id, rec);
+    try { await idbDo('readwrite', s => s.put(rec, id)); } catch(e){ log('ブラウザ保存に失敗(再読み込みで外れます): ' + e); }
+    const old = cur; cur = { id }; if (old) gcFiles();
+    fileSt(); log('読み込み ' + file.name + ' (' + (file.size/1048576).toFixed(2) + ' MB)。「次の地面クリックで置く」を押してください');
+  }
   const log = (s) => { const el = $('log'); el.textContent = (new Date().toLocaleTimeString() + ' ' + s + '\n' + el.textContent).slice(0, 4000); };
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch(_){} };
   const send = (o) => { if (f.contentWindow) f.contentWindow.postMessage(Object.assign({ inoz: 1 }, o), INOZ); };
 
-  function doc(){
+  function doc(forShare){
     const d = { title: 'Editor 試用', source: '設計データ: 利用者 / 地形: 国土地理院 / 建物: PLATEAU' };
     if (st.hide.length) d.hide = st.hide.map(h => ({ gml: h.gml }));
-    if (st.models.length) d.models = st.models.map(m => ({ url: m.url, unit: m.unit, up: m.up, origin: m.origin, lat: m.lat, lon: m.lon, heading: m.heading, scale: m.scale, dz: m.dz }));
+    const ms = [];
+    for (const m of st.models){
+      let url = m.url;
+      if (isLocal(url)){
+        if (forShare) continue;                       // ファイルの中身は URL に畳まない
+        const f = files.get(url.slice(6)); if (!f) continue;
+        url = f.dataURL;
+      }
+      ms.push({ url, unit: m.unit, up: m.up, origin: m.origin, lat: m.lat, lon: m.lon, heading: m.heading, scale: m.scale, dz: m.dz });
+    }
+    if (ms.length) d.models = ms;
     return d;
   }
   function push(){ send({ type: 'setData', data: doc() }); render(); save(); }
@@ -137,7 +211,7 @@
     $('st-hide').textContent = st.hide.length + ' 棟';
     $('hide-list').innerHTML = st.hide.map((h, i) => `<li><span>${h.label || ''}<br><code>${h.gml}</code></span><button data-unhide="${i}">戻す</button></li>`).join('');
     $('st-models').textContent = st.models.length + ' 件';
-    $('model-list').innerHTML = st.models.map((m, i) => `<li><span>${m.url.split('/').pop()} @ ${m.lat.toFixed(5)}, ${m.lon.toFixed(5)} / ${m.heading}°</span><button data-unplace="${i}">外す</button></li>`).join('');
+    $('model-list').innerHTML = st.models.map((m, i) => `<li><span>${nameOf(m)} @ ${m.lat.toFixed(5)}, ${m.lon.toFixed(5)} / ${m.heading}°</span><button data-unplace="${i}">外す</button></li>`).join('');
     $('st-range').textContent = st.range ? `${st.range.side_m} m → ${st.range.width_mm} mm (1:${Math.round(st.range.side_m * 1000 / st.range.width_mm)})` : '—';
   }
 
@@ -162,8 +236,9 @@
       if (m.kind === 'ground'){
         if (placing){
           placing = false; $('b-place').textContent = '次の地面クリックで置く'; $('place-hint').textContent = '';
-          st.models.push({ url: $('objurl').value.trim(), unit: $('unit').value, up: $('up').value, origin: $('origin').value,
+          st.models.push({ url: cur ? 'local:' + cur.id : $('objurl').value.trim(), unit: $('unit').value, up: $('up').value, origin: $('origin').value,
             lat: m.lat, lon: m.lon, heading: +$('heading').value || 0, scale: +$('scale').value || 1, dz: +$('dz').value || 0 });
+          cur = null; fileSt();
           log(`置く ${m.lat.toFixed(5)}, ${m.lon.toFixed(5)} 標高 ${m.elev_abs.toFixed(1)} m`);
           push();
         }
@@ -201,7 +276,7 @@
   };
   $('b-place').onclick = () => {
     const u = $('objurl').value.trim();
-    if (!/^https:\/\//.test(u)){ log('OBJ の URL は https で始めてください'); return; }
+    if (!cur && !/^https:\/\//.test(u)){ log('先に OBJ ファイルを選ぶ(またはドロップする)か、https の URL を入れてください'); return; }
     placing = !placing; $('b-place').textContent = placing ? '地面をクリックしてください(もう一度押すと中止)' : '次の地面クリックで置く';
     $('place-hint').textContent = placing ? '建物や避難場所の上ではなく、地面を短くクリック' : '';
   };
@@ -220,7 +295,9 @@
     const v = st.view || { lat: +$('lat').value, lon: +$('lon').value };
     const q = new URLSearchParams({ lat: v.lat.toFixed(5), lon: v.lon.toFixed(5), bldg: '1' });
     if (v.dir != null) q.set('dir', (+v.dir).toFixed(1)); if (v.tilt) q.set('tilt', (+v.tilt).toFixed(1)); if (v.eye) q.set('eye', (+v.eye).toFixed(1));
-    const s = JSON.stringify(doc());
+    const s = JSON.stringify(doc(true));
+    const nLocal = st.models.filter(m => isLocal(m.url)).length;
+    if (nLocal) log(`※ ファイルから読んだ OBJ ${nLocal} 件は共有 URL に載りません`);
     let hash;
     try {
       const cs = new CompressionStream('gzip');
@@ -232,13 +309,27 @@
     try { await navigator.clipboard.writeText(url); log('共有 URL をコピーしました (' + url.length + ' 文字)'); }
     catch(_){ prompt('共有 URL', url); }
   };
-  $('b-reset').onclick = () => { if (!confirm('消した建物・置いたモデル・枠を全部消しますか?')) return; st = { hide: [], models: [], range: null, view: st.view }; send({ type: 'setRange', off: true }); push(); };
+  $('b-reset').onclick = () => { if (!confirm('消した建物・置いたモデル・枠を全部消しますか?')) return; st = { hide: [], models: [], range: null, view: st.view }; cur = null; fileSt(); send({ type: 'setRange', off: true }); push(); gcFiles(); };
+  // ファイルを選ぶ / ドロップ(画面のどこに落としてもよい。iframe の上はブラウザが奪うので、ドラッグ中だけ覆いを掛ける)
+  $('drop').onclick = () => $('objfile').click();
+  $('drop').onkeydown = e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); $('objfile').click(); } };
+  $('objfile').onchange = e => { takeFile(e.target.files[0]); e.target.value = ''; };
+  const shield = document.createElement('div');
+  shield.style.cssText = 'position:fixed;inset:0;z-index:9;display:none;background:rgba(31,95,191,.12);border:3px dashed #1f5fbf;color:#1f5fbf;font:600 18px system-ui;align-items:center;justify-content:center';
+  shield.textContent = 'ここに OBJ を落とす'; document.body.appendChild(shield);
+  let dragN = 0;
+  const hasFiles = e => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
+  window.addEventListener('dragenter', e => { if (!hasFiles(e)) return; dragN++; shield.style.display = 'flex'; document.body.classList.add('dragging'); });
+  window.addEventListener('dragleave', e => { if (!hasFiles(e)) return; if (--dragN <= 0){ dragN = 0; shield.style.display = 'none'; document.body.classList.remove('dragging'); } });
+  window.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
+  window.addEventListener('drop', e => { if (!hasFiles(e)) return; e.preventDefault(); dragN = 0; shield.style.display = 'none'; document.body.classList.remove('dragging'); takeFile(e.dataTransfer.files[0]); });
   $('panel').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.unhide != null){ st.hide.splice(+b.dataset.unhide, 1); push(); }
-    if (b.dataset.unplace != null){ st.models.splice(+b.dataset.unplace, 1); push(); }
+    if (b.dataset.unplace != null){ st.models.splice(+b.dataset.unplace, 1); push(); gcFiles(); }
   });
 
+  idbLoad().then(() => { render(); if (ready && st.models.some(m => isLocal(m.url))) push(); gcFiles(); });
   render();
   if (st.range){ $('lat').value = st.range.lat; $('lon').value = st.range.lon; $('side').value = st.range.side_m; $('width').value = st.range.width_mm; }
   openView();
