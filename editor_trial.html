@@ -286,7 +286,8 @@
   };
   const exportAs = (kind, extra) => {
     if (!st.range){ log('先に範囲を決めて「枠を描く」を押してください'); return; }
-    const o = Object.assign({ type: 'export', kind }, extra);
+    // 中心は描いた枠の中心(開いた場所ではない)。STL は既定で「一体の立体」(仕様021 stlbldg=solid)
+    const o = Object.assign({ type: 'export', kind, lat: st.range.lat, lon: st.range.lon }, extra);
     log('出力を依頼 ' + kind + ' …(数十秒かかることがあります)');
     send(o);
   };
