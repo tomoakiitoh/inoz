@@ -111,7 +111,7 @@
     </section>
 
     <section>
-      <h2>出す</h2>
+      <h2>出す <span class="st" id="st-bldg">建物を待っています…</span></h2>
       <div class="row">
         <button id="b-stl">STL</button>
         <button id="b-svg">型紙 SVG</button>
@@ -121,6 +121,12 @@
         <div><label>等高線の間隔 (m)</label><input type="number" id="cont" value="2" step="0.5"></div>
         <div><label>高さの誇張</label><input type="number" id="stlz" value="1" step="0.1"></div>
       </div>
+      <div class="row">
+        <div><label>STL の中身</label><select id="hollow"><option value="0">中実(家庭用プリンタ向け)</option><option value="1.5">中空 肉厚1.5mm(造形サービス向け)</option><option value="2">中空 肉厚2mm</option></select></div>
+      </div>
+      <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="lab" checked style="width:auto">台座の裏に出典と縮尺を刻む</label>
+      <input type="text" id="labtxt" placeholder="1行目に入れる文字(地名など・空でよい)" maxlength="40" style="margin-top:4px">
+      <p class="sub" style="margin:4px 0 0">STL は継ぎ目のない一体の立体で出ます(造形サービスにそのまま出せます)。造形サービスの料金はほぼ体積で決まるので、中空にすると約半分になります。底が開くので、家庭用 FDM では中実をおすすめします。</p>
     </section>
 
     <section>
@@ -260,7 +266,7 @@
       const a = document.createElement('a'); a.href = URL.createObjectURL(m.blob); a.download = m.name; a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 10000);
       const meta = m.meta || {};
-      log(`出力 ${m.name} (${(m.blob.size/1048576).toFixed(2)} MB` + (meta.triangles ? `, ${meta.triangles} 面` : '') + (meta.layers ? `, ${meta.layers} 層` : '') + (meta.hidden ? `, 消した ${meta.hidden}` : '') + ')');
+      log(`出力 ${m.name} (${(m.blob.size/1048576).toFixed(2)} MB` + (meta.triangles ? `, ${meta.triangles} 面` : '') + (meta.layers ? `, ${meta.layers} 層` : '') + (meta.hidden ? `, 消した ${meta.hidden}` : '') + (meta.solid && meta.solid.volume_cm3 ? `, 体積 ${meta.solid.volume_cm3} cm³` : '') + ')');
       return;
     }
     if (m.type === 'viewChanged'){ st.view = { lat: m.lat, lon: m.lon, dir: m.dir, tilt: m.tilt, eye: m.eye }; return; }
@@ -271,6 +277,24 @@
   // マウスが画面に入ったら焦点を渡す(WASD・矢印・R/F が効くように)
   const focusView = () => { try { f.focus(); f.contentWindow.focus(); } catch(_){} };
   f.addEventListener('mouseenter', focusView);
+
+  // 建物の読み込み具合(仕様022)。iframe は同じ inoz.jp なので中を直接見る。
+  // 書き出しに要るのは高さの較正(__BLDG.dy)だけ(タイルは書き出しのときに全部読み直す)
+  let bldgWait = true;
+  setInterval(() => {
+    let t = '建物を待っています…', wait = true;
+    try {
+      const w = f.contentWindow, B = w.__BLDG, btn = w.document.getElementById('bldgbtn'), lb = btn ? btn.textContent : '';
+      if (!ready) t = 'inoz を開いています…';
+      else if (B && B.dy !== null && B.dy !== undefined){ t = '建物 表示中(書き出せます)'; wait = false; }
+      else if (/データなし/.test(lb)){ t = 'この場所は PLATEAU の建物なし(地形と持ち込みモデルで出します)'; wait = false; }
+      else if (/失敗/.test(lb)){ t = '建物の読み込みに失敗(地形と持ち込みモデルで出します)'; wait = false; }
+      else t = '建物を読み込み中…(書き出しはお待ちください)';
+    } catch(_){}
+    bldgWait = wait;
+    $('st-bldg').textContent = t;
+    for (const id of ['b-stl', 'b-svg', 'b-dxf']) $(id).disabled = wait;
+  }, 700);
 
   $('b-open').onclick = openView;
   $('b-center').onclick = () => { send({ type: 'getView' }); setTimeout(() => { if (st.view){ $('lat').value = st.view.lat.toFixed(5); $('lon').value = st.view.lon.toFixed(5); log('中心を今の位置に'); } }, 400); };
@@ -286,12 +310,14 @@
   };
   const exportAs = (kind, extra) => {
     if (!st.range){ log('先に範囲を決めて「枠を描く」を押してください'); return; }
+    if (bldgWait){ log('建物の読み込みが終わってから書き出してください(右上の表示が「表示中」になるまで)'); return; }
     // 中心は描いた枠の中心(開いた場所ではない)。STL は既定で「一体の立体」(仕様021 stlbldg=solid)
     const o = Object.assign({ type: 'export', kind, lat: st.range.lat, lon: st.range.lon }, extra);
     log('出力を依頼 ' + kind + ' …(数十秒かかることがあります)');
     send(o);
   };
-  $('b-stl').onclick = () => exportAs('stl', { stl: st.range && st.range.side_m, stlw: st.range && st.range.width_mm, stlz: +$('stlz').value || 1, stlmode: 'city' });
+  $('b-stl').onclick = () => exportAs('stl', { stl: st.range && st.range.side_m, stlw: st.range && st.range.width_mm, stlz: +$('stlz').value || 1, stlmode: 'city',
+    stlhollow: +$('hollow').value || 0, stllabel: $('lab').checked ? ($('labtxt').value.trim() || '1') : '0' });
   $('b-svg').onclick = () => exportAs('plan.svg', { plan: st.range && st.range.side_m, planw: st.range && st.range.width_mm, plancont: +$('cont').value || 2 });
   $('b-dxf').onclick = () => exportAs('plan.dxf', { plan: st.range && st.range.side_m, planw: st.range && st.range.width_mm, plancont: +$('cont').value || 2 });
   $('b-share').onclick = async () => {
