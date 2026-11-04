@@ -126,6 +126,7 @@
       </div>
       <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="lab" checked style="width:auto">台座の裏に出典と縮尺を刻む</label>
       <input type="text" id="labtxt" placeholder="1行目に入れる文字(地名など・空でよい)" maxlength="40" style="margin-top:4px">
+      <p class="sub" id="labhint" style="margin:2px 0 0"></p>
       <p class="sub" style="margin:4px 0 0">STL は継ぎ目のない一体の立体で出ます(造形サービスにそのまま出せます)。造形サービスの料金はほぼ体積で決まるので、中空にすると約半分になります。底が開くので、家庭用 FDM では中実をおすすめします。</p>
     </section>
 
@@ -301,7 +302,30 @@
   $('b-range').onclick = () => {
     st.range = { lat: +$('lat').value, lon: +$('lon').value, side_m: +$('side').value, width_mm: +$('width').value };
     send({ type: 'setRange', lat: st.range.lat, lon: st.range.lon, side_m: st.range.side_m }); render(); save();
+    autoLabel(st.range.lat, st.range.lon);
   };
+
+  // 刻印の1行目に、枠の中心の地名を自動で入れる(仕様023)。国土地理院の逆ジオコーダ(町丁目まで)+ inoz の市区町村一覧(コード→名前)。
+  // 自分で書き換えたら、それ以降は上書きしない。住所の無い所(山頂・海)は空のまま
+  let labDirty = false, muniMap = null;
+  $('labtxt').addEventListener('input', () => { labDirty = true; $('labhint').textContent = ''; });
+  async function autoLabel(lat, lon){
+    if (labDirty) return;
+    try {
+      if (!muniMap){
+        const j = await (await fetch(INOZ + '/data/jp_muni.json')).json();
+        muniMap = new Map();
+        for (const p of j.prefs || []) for (const m of p.m || []) muniMap.set(String(m.c), p.n + m.n.replace(/\s+/g, ''));
+      }
+      const r = await (await fetch('https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=' + lat.toFixed(6) + '&lon=' + lon.toFixed(6))).json();
+      const x = r && r.results;
+      if (labDirty) return;
+      if (!x || !x.muniCd){ $('labtxt').value = ''; $('labhint').textContent = 'この場所は住所が引けませんでした(山・海など)。必要なら手で入れてください'; return; }
+      const name = ((muniMap.get(String(x.muniCd)) || '') + ' ' + (x.lv01Nm && x.lv01Nm !== '－' ? x.lv01Nm : '')).trim();
+      $('labtxt').value = name.slice(0, 40);
+      $('labhint').textContent = '枠の中心の地名を自動で入れました(国土地理院の逆ジオコーダ)。書き換えられます';
+    } catch(e){ $('labhint').textContent = '地名を自動で引けませんでした。必要なら手で入れてください'; }
+  }
   $('b-place').onclick = () => {
     const u = $('objurl').value.trim();
     if (!cur && !/^https:\/\//.test(u)){ log('先に OBJ ファイルを選ぶ(またはドロップする)か、https の URL を入れてください'); return; }
@@ -362,7 +386,7 @@
 
   idbLoad().then(() => { render(); if (ready && st.models.some(m => isLocal(m.url))) push(); gcFiles(); });
   render();
-  if (st.range){ $('lat').value = st.range.lat; $('lon').value = st.range.lon; $('side').value = st.range.side_m; $('width').value = st.range.width_mm; }
+  if (st.range){ $('lat').value = st.range.lat; $('lon').value = st.range.lon; $('side').value = st.range.side_m; $('width').value = st.range.width_mm; autoLabel(st.range.lat, st.range.lon); }
   openView();
 })();
 </script>
